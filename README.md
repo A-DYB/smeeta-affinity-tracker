@@ -1,6 +1,8 @@
 # smeeta-affinity-tracker
 Track Smeeta's affinity buff, and always know when it will expire
 
+Run scan.py
+
 Press ` to play time remaining.
 
 Made for 1080p 100% UI scale, no guarantees about other settings.
