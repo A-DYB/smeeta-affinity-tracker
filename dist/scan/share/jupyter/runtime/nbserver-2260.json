@@ -1,0 +1,11 @@
+{
+  "base_url": "/",
+  "hostname": "localhost",
+  "notebook_dir": "C:\\Users\\Adrian Dybka\\AppData\\Roaming\\SPB_Data",
+  "password": false,
+  "pid": 2260,
+  "port": 8888,
+  "secure": false,
+  "token": "bfaaa937e2cbd8ab3131ddcfa975fd17e52152be95d9af9c",
+  "url": "http://localhost:8888/"
+}
