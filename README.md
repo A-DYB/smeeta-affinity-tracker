@@ -11,3 +11,4 @@ Only works for Windows
 
 Uses image recognition, will not get you banned
 
+TUTORIAL COMING SOON
