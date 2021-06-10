@@ -11,5 +11,3 @@ Only works for Windows
 
 Uses image recognition, will not get you banned
 
-COMING SOON:
-New soundpack, funni edition
