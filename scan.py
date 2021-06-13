@@ -1,30 +1,29 @@
-
-from ctypes import wintypes
 import pytesseract
 from pytesseract import Output
 import cv2
 import numpy as np
 from playsound import playsound
 import os 
-import sys
 import time
-from threading import Timer
-from threading import Thread
-import string
 from windowcapture import WindowCapture
 import keyboard 
-import pickle
-from os import SEEK_END
 import io
 from lz.reversal import reverse
 import threading
 from win32com.shell import shell, shellcon
 
-path = os.path.join(shell.SHGetFolderPath(0, shellcon.CSIDL_LOCAL_APPDATA, None, 0), 'Warframe\ee.log')
+'''
+Modify these to change settings
+'''
 debug = False
 min_time = 130
 max_time = 156
+ui_scale = 1
 
+'''
+'''
+
+path = os.path.join(shell.SHGetFolderPath(0, shellcon.CSIDL_LOCAL_APPDATA, None, 0), 'Warframe\ee.log')
 dirname = os.path.dirname(__file__)
 filename = os.path.join(dirname, 'Tesseract-OCR\\tesseract.exe')
 
@@ -35,17 +34,7 @@ WHITE = [255, 255, 255]
 count = 0
 prev_ended_time = 0 
 proc_list = []
-proc_time = [0, 0, 0 ,0 ,0 ]
-ui_scale = 1
 
-
-mission_start=0
-mission_end=0
-mission_time=0
-tot_mission_t=0
-total_proc_time=[0,0,0,0,0]
-
-start_time = time.time()
 acolyte_time = 0
 last_acolyte_time = time.time()
 
@@ -62,11 +51,13 @@ wincap = WindowCapture('Warframe', (int(650+490*(ui_scale-1)), int(60+12*(ui_sca
 
 def save_mission_stats():
     global path
+    global dirname
     start_time = 0
     acolyte = []
     with open(path) as file:
         for line in reverse(file, batch_size=io.DEFAULT_BUFFER_SIZE):
             #find mission state
+            #GameRulesImpl::StartRound()
             if "GameRulesImpl::StartRound()" in line:
                 start_time = float(line.split(" ")[0])
                 break
@@ -83,11 +74,12 @@ def save_mission_stats():
             else:
                 acolyte_int.append(float(acolyte[i])-float(acolyte[i-1]))
         avg_time = sum(acolyte_int)/len(acolyte_int)
-        f = open("E:\Warframe stuff\Code\VisionProject_dist\mission_log.txt", "w")
+        f = open(os.path.join(dirname, 'mission_log.txt'), "w")
         f.write("Average Acolyte spawn time: " + get_time_str(avg_time) + "\n")
         for elem in acolyte_int:
             f.write(get_time_str(elem)+ "\n")
         f.close()
+
 
 def check_acolyte():
     global prev_time
@@ -95,6 +87,7 @@ def check_acolyte():
     global last_acolyte_time
     global path
     global in_mission
+
     i=0
     with open(path) as file:
         for line in reverse(file, batch_size=io.DEFAULT_BUFFER_SIZE):
@@ -148,7 +141,6 @@ def print_stats():
     global state
     global proc_list
     global acolyte_time
-    global display_text
 
     if not debug:    
         clear()
@@ -181,6 +173,7 @@ def print_stats():
 def onkeypress(event):
     global state
     global proc_list
+    global dirname
     
     if event.name == '`' :
         t= time.time()
@@ -229,6 +222,7 @@ def proc_handler(tim, end_time):
     global proc_list
     global state
     global threads
+    global dirname
 
     t= time.time()
 
@@ -281,7 +275,6 @@ def proc_handler(tim, end_time):
             play_s(os.path.join(dirname,'Sounds\\triple.mp3') )
         elif state ==4:
             play_s(os.path.join(dirname, 'Sounds\\quadruple.mp3') )
-
 
     threads.pop(0)
     
