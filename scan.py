@@ -1,15 +1,16 @@
+import os 
+import time
+import io
+import threading
+
+from windowcapture import WindowCapture
+
 import pytesseract
-from pytesseract import Output
 import cv2
 import numpy as np
 from playsound import playsound
-import os 
-import time
-from windowcapture import WindowCapture
 import keyboard 
-import io
 from lz.reversal import reverse
-import threading
 from win32com.shell import shell, shellcon
 
 '''
@@ -291,6 +292,7 @@ def main():
     
 
     keyboard.on_release(onkeypress)
+    
     x = threading.Thread(target=scan_file)
     x.start()
 
@@ -326,7 +328,7 @@ def main():
 
                 #ret,img = cv2.threshold(close,170,255,cv2.THRESH_BINARY)  
                 img = cv2.threshold(close, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-                d = pytesseract.image_to_data(img, lang='eng',config='-c tessedit_do_invert=0 -c tessedit_char_whitelist="0123456789x.%m " --psm 11', output_type=Output.DICT)
+                d = pytesseract.image_to_data(img, lang='eng',config='-c tessedit_do_invert=0 -c tessedit_char_whitelist="0123456789x.%m " --psm 11', output_type=pytesseract.Output.DICT)
 
                 '''
                 if img.shape[1] >1080:
