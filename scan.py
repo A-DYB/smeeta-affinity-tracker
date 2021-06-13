@@ -17,7 +17,7 @@ from win32com.shell import shell, shellcon
 Modify these to change settings
 '''
 debug = False
-min_time = 130
+min_time = 119
 max_time = 156
 ui_scale = 1
 
@@ -292,7 +292,7 @@ def main():
     
 
     keyboard.on_release(onkeypress)
-    
+
     x = threading.Thread(target=scan_file)
     x.start()
 
