@@ -22,7 +22,7 @@ from win32com.shell import shell, shellcon
 
 path = os.path.join(shell.SHGetFolderPath(0, shellcon.CSIDL_LOCAL_APPDATA, None, 0), 'Warframe\ee.log')
 debug = False
-min_time = 119
+min_time = 130
 max_time = 156
 
 dirname = os.path.dirname(__file__)
