@@ -1,4 +1,6 @@
 # smeeta-affinity-tracker
+**AS ALWAYS USE AT YOUR OWN RISK** -> However, nothing here breaks TOS
+
 Track Smeeta's affinity buff, and always know when it will expire.
 
 Has audio and visual indicators, you can finally relax and listen to music while farming without worrying you will miss a proc!
