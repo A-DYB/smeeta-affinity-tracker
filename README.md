@@ -8,7 +8,7 @@ Has audio and visual indicators, you can finally relax and listen to music while
 
   pip install pytesseract
 
-  pip install opencv
+  pip install cv2
 
   pip install numpy
 
