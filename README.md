@@ -10,7 +10,7 @@ Has audio and visual indicators, you can finally relax and listen to music while
 
   pip install pytesseract
 
-  pip install cv2
+  pip install opencv-python
 
   pip install numpy
 
