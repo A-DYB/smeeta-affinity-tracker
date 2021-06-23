@@ -28,6 +28,7 @@ Has audio and visual indicators, you can finally relax and listen to music while
 - **Run scan.py**
 - **Put Warframe in Borderless Fullscreen**
 - **Disable Optimized Flip Model in Warframe settings**
+- Make sure UI scale is set to 100%
 - **(literally) Profit?**
 - **Still don't get it? Watch tutorial ->** https://youtu.be/UURx-oBQPks
 
