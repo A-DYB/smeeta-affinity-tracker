@@ -7,30 +7,42 @@ class WindowCapture:
     # properties
     w = 450
     h = 100
+    base_h = h
+    offset_x = 170
     hwnd = None
     window_name = None
-    cropped_x = 0
-    cropped_y = 0
-    offset_x = 0
-    offset_y = 0
-    x_coord=y_coord=0
+    cropped_x = cropped_y = 0
 
     # constructor
-    def __init__(self, window_name, coord, dim):
-
-        # find the handle for the window we want to capture
-        self.x_coord,self.y_coord = coord
-        self.cropped_x, self.cropped_y  = (GetSystemMetrics(0)-self.x_coord,self.y_coord)
-        self.w, self.h = dim
+    def __init__(self, window_name, dim):
         self.window_name = window_name
-        
+        # find the handle for the window we want to capture
         self.hwnd = win32gui.FindWindow(None, self.window_name)
-
         if not self.hwnd:
             raise Exception('Window not found: {}'.format(window_name))
-        
 
-    def get_screenshot(self):
+        #get window properties
+        rect = win32gui.GetWindowRect(self.hwnd)
+        win_w = rect[2] - rect[0]
+        y_border_thickness = GetSystemMetrics(33) + 2 * GetSystemMetrics(4)
+        
+        #width and height of detection box
+        self.w, self.h = dim
+        self.base_h = self.h
+        #Upper left corner of detection box, given top left of screen is 0,0
+        self.cropped_x, self.cropped_y  = ( int(win_w - self.w - self.offset_x) , int(y_border_thickness) )
+
+    def get_screenshot(self, avg_width):
+        self.w = int(avg_width * 13)
+        #get window properties
+        rect = win32gui.GetWindowRect(self.hwnd)
+        win_w = rect[2] - rect[0]
+        y_border_thickness = GetSystemMetrics(33) + GetSystemMetrics(4)
+        ui_scale = avg_width/36
+        self.h = int(ui_scale * self.base_h)
+
+        #Upper left corner of detection box, given top left of screen is 0,0
+        self.cropped_x, self.cropped_y  = ( int(win_w - self.w - self.offset_x * ui_scale) , int(y_border_thickness) )
 
         # get the window image data
         try:
@@ -70,3 +82,11 @@ class WindowCapture:
         img = np.ascontiguousarray(img)
 
         return img
+    def get_window_size(self):
+        rect = win32gui.GetWindowRect(self.hwnd)
+        win_x = rect[0]
+        win_y = rect[1]
+        win_w = rect[2] - win_x
+        win_h = rect[3] - win_y
+
+        return (win_x, win_y, win_w, win_h)

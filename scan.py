@@ -17,10 +17,8 @@ from win32com.shell import shell, shellcon
 Modify these to change settings
 '''
 debug = False
-min_time = 119
+min_time = 129
 max_time = 156
-ui_scale = 1
-
 '''
 '''
 
@@ -37,7 +35,9 @@ prev_ended_time = 0
 proc_list = []
 
 acolyte_time = 0
+acolyte_death_time = 0
 last_acolyte_time = time.time()
+last_acolyte_death = time.time()
 
 prev_time = '0'
 scan_time = '0'
@@ -47,8 +47,8 @@ stop_threads = False
 in_mission = False
 
 # initialize the WindowCapture class
-#window name, coordinate (top right frame of ref), box size
-wincap = WindowCapture('Warframe', (int(650+490*(ui_scale-1)), int(60+12*(ui_scale-1)) ) , (int(460 +340*(ui_scale-1)), int(85 +80*(ui_scale-1))) )
+#window name, box size
+wincap = WindowCapture('Warframe', ( 460 , 190 ) )
 
 def save_mission_stats():
     global path
@@ -58,7 +58,6 @@ def save_mission_stats():
     with open(path) as file:
         for line in reverse(file, batch_size=io.DEFAULT_BUFFER_SIZE):
             #find mission state
-            #GameRulesImpl::StartRound()
             if "GameRulesImpl::StartRound()" in line:
                 start_time = float(line.split(" ")[0])
                 break
@@ -86,6 +85,7 @@ def check_acolyte():
     global prev_time
     global scan_time
     global last_acolyte_time
+    global last_acolyte_death
     global path
     global in_mission
 
@@ -108,13 +108,18 @@ def check_acolyte():
             #LotusGameRules::EndSessionCallback
             elif 'Game [Info]: CommitInventoryChangesToDB' in line:
                 in_mission = False
+                clear()
                 prev_time = cur_time
                 save_mission_stats()
                 return time.time()
             #find last acolyte
             if "OnAgentCreated " in line and "Acolyte" in line:
+                in_mission = True
                 prev_time = cur_time
                 return time.time() - (float(cur_time) - float(line.split(" ")[0]))
+            
+            if 'Script [Info]: LotusGameRules.lua: persistent enemy was killed!' in line :
+                last_acolyte_death = time.time() - (float(cur_time) - float(line.split(" ")[0]))
 
             i+=1
     prev_time = cur_time
@@ -131,9 +136,20 @@ def scan_file():
         time.sleep(10)
 
 def get_time_str(secs):
+    min_str = ''
+    sec_str = ''
     mins = (int)(secs/60)
     sr = int(secs - mins*60)
-    return str(mins)+":"+str(sr)
+    if mins < 10:
+        min_str = '0'+str(mins)
+    else:
+        min_str = str(mins)
+    if sr < 10:
+        sec_str = '0'+str(sr)
+    else:
+        sec_str = str(sr)
+
+    return "00:"+min_str+":"+sec_str
 
 def clear():
     os.system( 'cls' )
@@ -142,6 +158,7 @@ def print_stats():
     global state
     global proc_list
     global acolyte_time
+    global acolyte_death_time
 
     if not debug:    
         clear()
@@ -155,17 +172,17 @@ def print_stats():
             UP = "\x1B["+ str(state+2) + "A"
             t= time.time()
             if state == 0:
-                print(f"{UP}Time since last acolyte: {get_time_str(acolyte_time)}{CLR}\n")
+                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\n")
             elif state == 1:
-                print(f"{UP}Time since last acolyte: {get_time_str(acolyte_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\n")
             elif state == 2:
-                print(f"{UP}Time since last acolyte: {get_time_str(acolyte_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\n")
             elif state == 3:
-                print(f"{UP}Time since last acolyte: {get_time_str(acolyte_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\n")
             elif state == 4:
-                print(f"{UP}Time since last acolyte: {get_time_str(acolyte_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\n")
             elif state == 5:
-                print(f"{UP}Time since last acolyte: {get_time_str(acolyte_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\nProc 5 Time remaining: {round(proc_list[4]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\nProc 5 Time remaining: {round(proc_list[4]-t,1)}{CLR}\n")
         else:
             UP = "\x1B[2A"
             print(f"{UP}Time since last acolyte: Not in a mission!{CLR}\n")
@@ -278,26 +295,42 @@ def proc_handler(tim, end_time):
             play_s(os.path.join(dirname, 'Sounds\\quadruple.mp3') )
 
     threads.pop(0)
-    
+
+def moving_average(window_size, data_list, sample):
+    if len(data_list)<window_size:
+        data_list.append(sample)
+    else:
+        data_list.pop(0)
+        data_list.append(sample)
+    if debug:
+        print(data_list)
+
+    return (sum(data_list)/len(data_list), data_list)
 
 def main():
     global state
     global debug
     global proc_list
     global acolyte_time
+    global acolyte_death_time
     global stop_threads
     global threads
     global min_time
     global max_time
-    
+
+
+    width_sample_list = []
+    wid_avg = 36
+    wid_sample_count = 1
 
     keyboard.on_release(onkeypress)
 
-    x = threading.Thread(target=scan_file)
-    x.start()
+    x1 = threading.Thread(target=scan_file)
+    x1.start()
 
     x2 = threading.Thread(target=print_stats)
     x2.start()
+
 
     cur_time = 0
 
@@ -309,19 +342,20 @@ def main():
             if in_mission:
                 cur_time = time.time()
             
-                image = wincap.get_screenshot() 
-                rows, cols, _ = image.shape       
+                #wincap.set_window_size()
+                image = wincap.get_screenshot(wid_avg) 
+                x,y,w,h = wincap.get_window_size()
 
-                
-                #snapshot time screenie was taken
-                cur_t = time.time()
+                rows, cols, _ = image.shape     
+                cv2.imshow("test",image) 
 
                 #HLS 50
                 hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
-                line1_mask = get_rot_hls_mask(hls,50,-3.6/ui_scale)
+                line1_mask = get_rot_hls_mask(hls,50,-3.6)
 
-                scale = 5/ui_scale
-                line1 = cv2.resize( line1_mask,None,  fx = scale, fy = scale)
+                scale = 5
+                #scale = (2300/(wid_avg * 12.75))
+                line1 = cv2.resize(line1_mask,None,  fx = scale, fy = scale)
                 #15
                 filt = 5
                 close = cv2.GaussianBlur(line1,(filt,filt),0)
@@ -336,28 +370,38 @@ def main():
                 else:
                     cv2.imshow('Computer Vision', img)
                 '''
-
+                
+                
                 n_boxes = len(d['level'])
                 for i in range(n_boxes):
                     if d['text'][i] is not '' and debug:
-                        print("OUTPUT " + str(count)+": " + d['text'][i] + "    Conf: " ,d['conf'][i],"     Is float:",isfloat(d['text'][i]))
+                        print("\nOUTPUT " + str(count)+": " + d['text'][i] + "    Conf: " ,d['conf'][i],"     Is float:",isfloat(d['text'][i]))
+                        print( d['width'][i])
 
                     if isfloat(d['text'][i]):
                         result = float(d['text'][i])
 
                         if '.' in d['text'][i]:
                             result = float(d['text'][i])
+                            if d['conf'][i] >= 50:
+                                s_len = len(d['text'][i])
+
+                                wid_avg, width_sample_list = moving_average(5, width_sample_list, d['width'][i]/s_len)
+                                #wid_avg = (wid_avg * (wid_sample_count) + d['width'][i]/s_len)/(wid_sample_count+1)
+                                #wid_sample_count+=1
+                                if debug:
+                                    print("AVERAGE WIDTH: ",wid_avg, d['width'][i], s_len, d['width'][i]/s_len, scale)
                         else:
-                            result = float(d['text'][i].replace('.',''))/10
+                            result = float(d['text'][i])/10
 
                         if d['conf'][i] >= 50:
                             #129 and result < 156
+                            
                             if (result > min_time and result <= max_time) :
 
                                 wid = d['width'][i]
 
-                                if wid >= 29*scale*ui_scale and wid <= 38*scale*ui_scale:
-
+                                if wid >= (wid_avg - 0.15 * wid_avg)*scale and wid <= (wid_avg + 0.15 * wid_avg)*scale:
                                     if not proc_list:
                                         state +=1
                                         proc_list.append(cur_time + float(result))
@@ -382,7 +426,7 @@ def main():
                                                 print("Failed ability cooldown test (ability occured too soon after previous ability)")
                                 else:
                                     if debug:
-                                        print("Failed text width test: ", wid, "    Required a range of ",int(29*scale),int(38*scale))
+                                        print("Failed text width test: ", wid, "    Required a range of ",(wid_avg - 0.15 * wid_avg)*scale,(wid_avg + 0.15 * wid_avg)*scale)
                             else:
                                 if debug:
                                     print("Failed valid time range test. Got: ", result, 'Expected: ('+str(min_time)+', '+str(max_time)+')')
@@ -391,6 +435,7 @@ def main():
                                 print("Failed OCR confidence level test")
 
                 acolyte_time = (int)(cur_time - last_acolyte_time)
+                acolyte_death_time = (int)(cur_time - last_acolyte_death)
                 
                 if cv2.waitKey(1) == ord('q'):
                     cv2.destroyAllWindows()
@@ -401,7 +446,7 @@ def main():
     except KeyboardInterrupt:
         clear()
         stop_threads = True
-        x.join()
+        #x1.join()
         os._exit(1)
 
 if __name__ == '__main__':
