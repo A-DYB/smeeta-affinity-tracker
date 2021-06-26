@@ -17,7 +17,7 @@ from win32com.shell import shell, shellcon
 Modify these to change settings
 '''
 debug = False
-min_time = 119
+min_time = 129
 max_time = 156
 '''
 '''
