@@ -17,7 +17,7 @@ from win32com.shell import shell, shellcon
 Modify these to change settings
 '''
 debug = False
-min_time = 129
+min_time = 119
 max_time = 156
 '''
 '''
@@ -172,17 +172,17 @@ def print_stats():
             UP = "\x1B["+ str(state+2) + "A"
             t= time.time()
             if state == 0:
-                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\n")
             elif state == 1:
-                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\n")
             elif state == 2:
-                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\n")
             elif state == 3:
-                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\n")
             elif state == 4:
-                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\n")
             elif state == 5:
-                print(f"{UP}Time since last acolyte spawned: {get_time_str(acolyte_time)}{CLR}, Died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\nProc 5 Time remaining: {round(proc_list[4]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\nProc 5 Time remaining: {round(proc_list[4]-t,1)}{CLR}\n")
         else:
             UP = "\x1B[2A"
             print(f"{UP}Time since last acolyte: Not in a mission!{CLR}\n")
