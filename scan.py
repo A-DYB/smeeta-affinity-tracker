@@ -347,7 +347,7 @@ def main():
                 x,y,w,h = wincap.get_window_size()
 
                 rows, cols, _ = image.shape     
-                cv2.imshow("test",image) 
+                #cv2.imshow("test",image) 
 
                 #HLS 50
                 hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
