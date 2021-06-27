@@ -8,7 +8,7 @@ class WindowCapture:
     w = 450
     h = 100
     base_h = h
-    offset_x = 170
+    offset_x = 180
     hwnd = None
     window_name = None
     cropped_x = cropped_y = 0
@@ -33,12 +33,14 @@ class WindowCapture:
         self.cropped_x, self.cropped_y  = ( int(win_w - self.w - self.offset_x) , int(y_border_thickness) )
 
     def get_screenshot(self, avg_width):
-        self.w = int(avg_width * 13)
+        self.w = int(avg_width * 14)
         #get window properties
         rect = win32gui.GetWindowRect(self.hwnd)
         win_w = rect[2] - rect[0]
         y_border_thickness = GetSystemMetrics(33) + GetSystemMetrics(4)
-        ui_scale = avg_width/36
+        ui_scale = avg_width/(36)
+        if ui_scale<1:
+            ui_scale=1
         self.h = int(ui_scale * self.base_h)
 
         #Upper left corner of detection box, given top left of screen is 0,0

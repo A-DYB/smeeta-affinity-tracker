@@ -48,7 +48,7 @@ in_mission = False
 
 # initialize the WindowCapture class
 #window name, box size
-wincap = WindowCapture('Warframe', ( 460 , 190 ) )
+wincap = WindowCapture('Warframe', ( 1000 , 190 ) )
 
 def save_mission_stats():
     global path
@@ -88,21 +88,25 @@ def check_acolyte():
     global last_acolyte_death
     global path
     global in_mission
+    cur_time ="0"
 
     i=0
     with open(path) as file:
         for line in reverse(file, batch_size=io.DEFAULT_BUFFER_SIZE):
-            if i == 0:
-                cur_time = line.split(" ")[0]
-            scan_time = line.split(" ")[0]
+
+            if isfloat(line.split(" ")[0]):
+                if i == 0:
+                    cur_time = line.split(" ")[0]
+                scan_time = line.split(" ")[0]
             
-            if scan_time == prev_time:
+            if scan_time == prev_time and prev_time != "0":
                 prev_time = cur_time
                 break
             #find mission state
             if "GameRulesImpl::StartRound()" in line:
                 in_mission = True
                 prev_time = cur_time
+                last_acolyte_death = time.time() - (float(cur_time) - float(line.split(" ")[0]))
                 return (time.time() - (float(cur_time) - float(line.split(" ")[0])))
             #EndOfMatch.lua: Initialize
             #LotusGameRules::EndSessionCallback
@@ -153,12 +157,19 @@ def get_time_str(secs):
 
 def clear():
     os.system( 'cls' )
+def isfloat(value):
+  try:
+    float(value)
+    return True
+  except ValueError:
+    return False
 
 def print_stats():
     global state
     global proc_list
     global acolyte_time
     global acolyte_death_time
+    global debug
 
     if not debug:    
         clear()
@@ -224,9 +235,17 @@ def get_rot_hls_mask(image, sens, deg):
     HLS_high = np.array([255,255,255], dtype=np.uint8)
     mask = cv2.inRange(image, HLS_low, HLS_high)
 
-    M = cv2.getRotationMatrix2D((cols/2, rows/2), deg, 1)
+    M = cv2.getRotationMatrix2D((0,0), deg, 1)
     rot = cv2.warpAffine(mask, M, (cols, rows))
     gray = cv2.bitwise_not(rot)
+
+    return gray
+def get_hls_mask(image, sens):
+    rows,cols,_ = image.shape
+    HLS_low = np.array([0,255-sens,0], dtype=np.uint8)
+    HLS_high = np.array([255,255,255], dtype=np.uint8)
+    mask = cv2.inRange(image, HLS_low, HLS_high)
+    gray = cv2.bitwise_not(mask)
 
     return gray
 
@@ -297,6 +316,7 @@ def proc_handler(tim, end_time):
     threads.pop(0)
 
 def moving_average(window_size, data_list, sample):
+    global debug
     if len(data_list)<window_size:
         data_list.append(sample)
     else:
@@ -307,6 +327,26 @@ def moving_average(window_size, data_list, sample):
 
     return (sum(data_list)/len(data_list), data_list)
 
+def find_rotation_points(pts):
+    bottom_left = [100000,0]
+    bottom_right =[0,0]
+    s_max = 0
+    diff = -1000000
+    for y,x in pts:
+        
+        if y-x> diff:
+            bottom_left=[x,y]
+        if x+y > s_max:
+            s_max = x+y
+            bottom_right = [x,y]
+    return bottom_left,bottom_right
+
+def plot( img):
+    global debug
+    if img.shape[1] >1080:
+        cv2.imshow('Computer Vision', cv2.resize( img,None,  fx = 1080/img.shape[1], fy = 1080/img.shape[1]))
+    else:
+        cv2.imshow('Computer Vision', img)
 def main():
     global state
     global debug
@@ -321,7 +361,7 @@ def main():
 
     width_sample_list = []
     wid_avg = 36
-    wid_sample_count = 1
+    scale = 5
 
     keyboard.on_release(onkeypress)
 
@@ -330,48 +370,74 @@ def main():
 
     x2 = threading.Thread(target=print_stats)
     x2.start()
-
-
     cur_time = 0
-
     try: 
         while True:  
             
             if stop_threads:
                 break
             if in_mission:
-                cur_time = time.time()
-            
-                #wincap.set_window_size()
+                cur_time = time.time()           
                 image = wincap.get_screenshot(wid_avg) 
-                x,y,w,h = wincap.get_window_size()
 
-                rows, cols, _ = image.shape     
-                #cv2.imshow("test",image) 
-
-                #HLS 50
                 hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
-                line1_mask = get_rot_hls_mask(hls,50,-3.6)
+                #HLS 50 gives good results, 3.7 deg for 100% ui scale, 
+                line1_mask = get_rot_hls_mask(hls,50,-3.7)
 
+                '''
+                canny = cv2.Canny(line1_mask, 70,200)
+                pts = np.argwhere(canny>0)
+                y1,x1 = pts.min(axis=0)
+                y2,x2 = pts.max(axis=0)
+                cropped = line1_mask[y1:y2, x1:x2]
+                b_wid = 10
+                border = cv2.copyMakeBorder(cropped,b_wid,b_wid,b_wid,b_wid,cv2.BORDER_CONSTANT, value= (255,255,255))
+                '''
+
+                #Scale 5 works well
                 scale = 5
-                #scale = (2300/(wid_avg * 12.75))
-                line1 = cv2.resize(line1_mask,None,  fx = scale, fy = scale)
-                #15
+                line1 = cv2.resize(line1_mask,None,  fx = scale, fy = scale, interpolation = cv2.INTER_LANCZOS4)
+
+                #5x5 filter works well
                 filt = 5
                 close = cv2.GaussianBlur(line1,(filt,filt),0)
 
-                #ret,img = cv2.threshold(close,170,255,cv2.THRESH_BINARY)  
                 img = cv2.threshold(close, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+                #plot(img)
+                #psm 11 works well
                 d = pytesseract.image_to_data(img, lang='eng',config='-c tessedit_do_invert=0 -c tessedit_char_whitelist="0123456789x.%m " --psm 11', output_type=pytesseract.Output.DICT)
 
+                #TESTING 
                 '''
-                if img.shape[1] >1080:
-                    cv2.imshow('Computer Vision', cv2.resize( img,None,  fx = 1080/img.shape[1], fy = 1080/img.shape[1]))
+                test = get_hls_mask(hls,50)
+                scale = 5
+                line1 = cv2.resize(test,None,  fx = scale, fy = scale)
+                filt = 5
+                close = cv2.GaussianBlur(line1,(filt,filt),0)
+                img = cv2.threshold(close, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+                
+                pts= np.argwhere(img==0)
+                bottom_left,bottom_right = find_rotation_points(pts)
+
+                rrow,rcol = img.shape
+                
+                if (bottom_right[0]-bottom_left[0]) != 0:
+                    deg = -180*np.arctan( (bottom_left[1]-bottom_right[1])/(bottom_right[0]-bottom_left[0]) )/np.pi
                 else:
-                    cv2.imshow('Computer Vision', img)
+                    deg = default_deg
+                    bottom_left = [0,0]
+                
+                if deg>0 or deg <-3.8:
+                    deg = default_deg
+                    bottom_left = [0,0]
+                deg = default_deg
+                print("Degrees: ",deg)
+                mtx = cv2.getRotationMatrix2D((bottom_left[0], bottom_left[1]), deg, 1)
+                reslt = cv2.warpAffine(img, mtx, (rcol, rrow), borderValue=(255,255,255))
+
                 '''
-                
-                
+                             
                 n_boxes = len(d['level'])
                 for i in range(n_boxes):
                     if d['text'][i] is not '' and debug:
@@ -402,6 +468,8 @@ def main():
                                 wid = d['width'][i]
 
                                 if wid >= (wid_avg - 0.15 * wid_avg)*scale and wid <= (wid_avg + 0.15 * wid_avg)*scale:
+                                    if debug:
+                                        print("Proc detected: ", result)
                                     if not proc_list:
                                         state +=1
                                         proc_list.append(cur_time + float(result))
@@ -422,13 +490,13 @@ def main():
                                             threads.append(t1)
 
                                         else:
-                                            if debug:
+                                            if debug and False:
                                                 print("Failed ability cooldown test (ability occured too soon after previous ability)")
                                 else:
                                     if debug:
                                         print("Failed text width test: ", wid, "    Required a range of ",(wid_avg - 0.15 * wid_avg)*scale,(wid_avg + 0.15 * wid_avg)*scale)
                             else:
-                                if debug:
+                                if debug and False:
                                     print("Failed valid time range test. Got: ", result, 'Expected: ('+str(min_time)+', '+str(max_time)+')')
                         else:
                             if debug:
