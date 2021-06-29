@@ -164,6 +164,16 @@ def isfloat(value):
   except ValueError:
     return False
 
+def get_str_fn(time_remain):
+    CLR = "\x1B[0K"
+    if time_remain<21 and time_remain>14:
+        return f"({int((round(time_remain,1)+6)/27)}{CLR} chances remain, WAIT)"
+    elif time_remain<14:
+        return f"({int((round(time_remain,1)+6)/27)}{CLR} chances remain, PICK UP)"
+    else:
+        return f"({int((round(time_remain,1)+6)/27)}{CLR} chances remain, {(int(time_remain)+6)%27}{CLR})"
+    
+
 def print_stats():
     global state
     global proc_list
@@ -182,18 +192,20 @@ def print_stats():
         if in_mission:
             UP = "\x1B["+ str(state+2) + "A"
             t= time.time()
+            if state >0:
+                t_rem = proc_list[0]-t
             if state == 0:
                 print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\n")
             elif state == 1:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+"\n")
             elif state == 2:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\n")
             elif state == 3:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\n")
             elif state == 4:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\n")
             elif state == 5:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\nProc 5 Time remaining: {round(proc_list[4]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\nProc 5 Time remaining: {round(proc_list[4]-t,1)}{CLR}\n")
         else:
             UP = "\x1B[2A"
             print(f"{UP}Time since last acolyte: Not in a mission!{CLR}\n")
@@ -363,6 +375,8 @@ def main():
     wid_avg = 36
     scale = 5
 
+    kill_warn = True
+
     keyboard.on_release(onkeypress)
 
     x1 = threading.Thread(target=scan_file)
@@ -504,6 +518,14 @@ def main():
 
                 acolyte_time = (int)(cur_time - last_acolyte_time)
                 acolyte_death_time = (int)(cur_time - last_acolyte_death)
+
+                '''
+                if acolyte_death_time > 3 * 60 and kill_warn:
+                    play_s(os.path.join(dirname,'Sounds\\start_killing.mp3'))
+                    kill_warn = False
+                elif acolyte_death_time < 3 * 60:
+                    kill_warn = True
+                '''
                 
                 if cv2.waitKey(1) == ord('q'):
                     cv2.destroyAllWindows()
