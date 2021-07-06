@@ -2,6 +2,7 @@ import os
 import time
 import io
 import threading
+import calendar
 
 from windowcapture import WindowCapture
 
@@ -12,6 +13,7 @@ from playsound import playsound
 import keyboard 
 from lz.reversal import reverse
 from win32com.shell import shell, shellcon
+from win32gui import GetWindowText, GetForegroundWindow
 
 '''
 Modify these to change settings
@@ -33,18 +35,24 @@ WHITE = [255, 255, 255]
 count = 0
 prev_ended_time = 0 
 proc_list = []
+se_list = []
 
 acolyte_time = 0
 acolyte_death_time = 0
 last_acolyte_time = time.time()
 last_acolyte_death = time.time()
 
-prev_time = '0'
-scan_time = '0'
+prev_time = 0
+scan_time = 0
 
 threads = []
 stop_threads = False
 in_mission = False
+
+total_paused_time = 0
+start_pause_time = 0
+end_pause_time = 0
+paused = False
 
 # initialize the WindowCapture class
 #window name, box size
@@ -80,15 +88,34 @@ def save_mission_stats():
             f.write(get_time_str(elem)+ "\n")
         f.close()
 
+def sync_time():
+    global global_time
+
+    with open(path) as file:
+        for line in file:
+            #find mission state
+            if "Sys [Diag]: Current time:" in line:
+                
+                res = line.split("[")[2]
+                res = res.split()
+                s = res[3]+"-"+res[2]+"-"+res[5].split("]")[0]+":"+res[4]
+                timestruct = time.strptime(s, "%d-%b-%Y:%H:%M:%S")
+                global_time = calendar.timegm(timestruct) - float(line.split(" ")[0])
+
+                break
 
 def check_acolyte():
     global prev_time
     global scan_time
+    global global_time
     global last_acolyte_time
     global last_acolyte_death
     global path
     global in_mission
-    cur_time ="0"
+    global total_paused_time
+    global paused
+    global se_list
+    latest_log_time = 0
 
     i=0
     with open(path) as file:
@@ -96,42 +123,47 @@ def check_acolyte():
 
             if isfloat(line.split(" ")[0]):
                 if i == 0:
-                    cur_time = line.split(" ")[0]
-                scan_time = line.split(" ")[0]
+                    latest_log_time = float(line.split(" ")[0])
+                scan_time = float(line.split(" ")[0])
             
-            if scan_time == prev_time and prev_time != "0":
-                prev_time = cur_time
-                break
+            if scan_time <= prev_time and prev_time != 0:
+                #We are up to date on latest logs
+                prev_time = latest_log_time
+                return last_acolyte_death
             #find mission state
             if "GameRulesImpl::StartRound()" in line:
                 in_mission = True
-                prev_time = cur_time
-                last_acolyte_death = time.time() - (float(cur_time) - float(line.split(" ")[0]))
-                return (time.time() - (float(cur_time) - float(line.split(" ")[0])))
+                prev_time = latest_log_time
+                last_acolyte_death = global_time +  float(line.split(" ")[0])
+                return global_time + float(line.split(" ")[0])
             #EndOfMatch.lua: Initialize
             #LotusGameRules::EndSessionCallback
             elif 'Game [Info]: CommitInventoryChangesToDB' in line:
                 in_mission = False
                 clear()
-                prev_time = cur_time
+                prev_time = latest_log_time
                 save_mission_stats()
+                total_paused_time = 0
+                paused = False
                 return time.time()
             #find last acolyte
             if "OnAgentCreated " in line and "Acolyte" in line:
                 in_mission = True
-                prev_time = cur_time
-                return time.time() - (float(cur_time) - float(line.split(" ")[0]))
+                prev_time = latest_log_time
+                return global_time + float(line.split(" ")[0])
             
             if 'Script [Info]: LotusGameRules.lua: persistent enemy was killed!' in line :
-                last_acolyte_death = time.time() - (float(cur_time) - float(line.split(" ")[0]))
+                last_acolyte_death = global_time + float(line.split(" ")[0])
+                se_list.append(last_acolyte_death)
 
             i+=1
-    prev_time = cur_time
+    prev_time = latest_log_time
     return last_acolyte_time
 
 def scan_file():
     global last_acolyte_time
     global stop_threads
+    sync_time()
     while(True):
         if stop_threads:
             break
@@ -177,6 +209,7 @@ def get_str_fn(time_remain):
 def print_stats():
     global state
     global proc_list
+    global se_list
     global acolyte_time
     global acolyte_death_time
     global debug
@@ -192,20 +225,22 @@ def print_stats():
         if in_mission:
             UP = "\x1B["+ str(state+2) + "A"
             t= time.time()
+            if len(se_list) > 0 and t - float(se_list[0]) > 60*5:
+                se_list.pop(0)
             if state >0:
                 t_rem = proc_list[0]-t
             if state == 0:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}, SE drop times: {str([get_time_str(time.time()-float(elem)) for elem in se_list])}{CLR}\n")
             elif state == 1:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+"\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}, SE drop times: {str([get_time_str(time.time()-float(elem)) for elem in se_list])}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+"\n")
             elif state == 2:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}, SE drop times: {str([get_time_str(time.time()-float(elem)) for elem in se_list])}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\n")
             elif state == 3:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}, SE drop times: {str([get_time_str(time.time()-float(elem)) for elem in se_list])}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\n")
             elif state == 4:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}, SE drop times: {str([get_time_str(time.time()-float(elem)) for elem in se_list])}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\n")
             elif state == 5:
-                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\nProc 5 Time remaining: {round(proc_list[4]-t,1)}{CLR}\n")
+                print(f"{UP}Time since last acolyte died: {get_time_str(acolyte_death_time)}{CLR}, SE drop times: {str([get_time_str(time.time()-float(elem)) for elem in se_list])}{CLR}\nProc 1 Time remaining: {round(proc_list[0]-t,1)}{CLR}            "+get_str_fn(t_rem)+f"\nProc 2 Time remaining: {round(proc_list[1]-t,1)}{CLR}\nProc 3 Time remaining: {round(proc_list[2]-t,1)}{CLR}\nProc 4 Time remaining: {round(proc_list[3]-t,1)}{CLR}\nProc 5 Time remaining: {round(proc_list[4]-t,1)}{CLR}\n")
         else:
             UP = "\x1B[2A"
             print(f"{UP}Time since last acolyte: Not in a mission!{CLR}\n")
@@ -215,6 +250,11 @@ def onkeypress(event):
     global state
     global proc_list
     global dirname
+    global in_mission
+    global total_paused_time
+    global start_pause_time
+    global end_pause_time
+    global paused
     
     if event.name == '`' :
         t= time.time()
@@ -233,7 +273,30 @@ def onkeypress(event):
                 play_s(os.path.join(dirname, 'Sounds\\quadruple.mp3') )
             elif state == 5:
                 play_s(os.path.join(dirname, 'Sounds\\quadruple.mp3') )
+    elif event.name == "esc" and GetWindowText(GetForegroundWindow()) == "Warframe":
+        if in_mission and not paused:
+            paused = True
+            in_mission = False
+            start_pause_time = time.time()
+        elif not in_mission and paused:
+            if time.time() - start_pause_time > 0.5:
+                end_pause_time = time.time()
+                total_paused_time = end_pause_time-start_pause_time
+                update_proc_list(total_paused_time)
+                paused = False
+                in_mission = True
 
+def update_proc_list(additional_time):
+    global proc_list
+
+    for i in range(len(proc_list)):
+        proc_list[i] += additional_time        
+
+def toggle(val):
+    if val == True:
+        return False
+    if val ==False:
+        return True
 def isfloat(value):
   try:
     float(value)
@@ -516,8 +579,8 @@ def main():
                             if debug:
                                 print("Failed OCR confidence level test")
 
-                acolyte_time = (int)(cur_time - last_acolyte_time)
-                acolyte_death_time = (int)(cur_time - last_acolyte_death)
+                acolyte_time = (int)(cur_time - last_acolyte_time - total_paused_time)
+                acolyte_death_time = (int)(cur_time - last_acolyte_death - total_paused_time)
 
                 '''
                 if acolyte_death_time > 3 * 60 and kill_warn:
